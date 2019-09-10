@@ -1,0 +1,11 @@
+decoded_message.txt
+__pycache__/
+build/
+dist/
+Include/
+Lib/
+Scripts/
+main.spec
+*.wav
+output
+pyvenv.cfg
