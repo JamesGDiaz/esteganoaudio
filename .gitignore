@@ -10,3 +10,4 @@ main.spec
 *.wav
 output
 pyvenv.cfg
+.DS_STORE
