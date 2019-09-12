@@ -1,6 +1,7 @@
 import scipy.io.wavfile as wavfile
 import numpy as np
 from unidecode import unidecode
+from graph import plot2signals
 
 
 def write(filename, message, selectedSampleRate=None, outputFilename="output"):
@@ -9,14 +10,15 @@ def write(filename, message, selectedSampleRate=None, outputFilename="output"):
     """
 
     fileSampleRate, wavData = wavfile.read(filename)
+    origWavData = np.array(wavData)
     wavData = np.array(wavData)  # To be able to write this numpy array
 
     secretMessage = np.frombuffer(
         unidecode(message).encode(), dtype=np.uint8)
 
     # Sample rate to hide the message in
-    DURATION = int(len(wavData)/fileSampleRate) #[sec]
-    MIN_SR = int(len(secretMessage)/DURATION) #maximum sample rate in Hz
+    DURATION = int(len(wavData)/fileSampleRate)  # [sec]
+    MIN_SR = int(len(secretMessage)/DURATION)+1  # maximum sample rate in Hz
     if (selectedSampleRate is None):
         print("Detecting auto sample rate")
         selectedSampleRate = MIN_SR
@@ -29,7 +31,8 @@ def write(filename, message, selectedSampleRate=None, outputFilename="output"):
         return
     elif(selectedSampleRate > (fileSampleRate/2)):
         ask_user("The message you are trying to hide is very long and \nthe audio might not be recognizable, do you wish to continue?")
-    if(selectedSampleRate is 0): selectedSampleRate=1
+    if(selectedSampleRate is 0):
+        selectedSampleRate = 1
     print(f"""Finished reading {filename}
     Input audio sample rate: {fileSampleRate}Hz. File duration: {DURATION}s
     Need to encode {len(secretMessage):,} characters.
@@ -37,10 +40,20 @@ def write(filename, message, selectedSampleRate=None, outputFilename="output"):
 
     PERIOD = int(fileSampleRate/selectedSampleRate)
     for i in range(len(secretMessage)):
-        #print(i)
+        # print(i)
         wavData[(i+1)*PERIOD] = secretMessage[i]
 
     wavfile.write(outputFilename+'.wav', fileSampleRate, wavData)
+
+    # Graph the signals
+    t1 = 0
+    t2 = 0.5
+    start = int(t1 * 44100)
+    end = int(t2 * 44100)
+    rng = slice(start, end)
+    s1 = origWavData[rng]
+    s2 = wavData[rng]
+    plot2signals(s1, s2, t1, t2)
 
 
 def read(filename,  sampleRate=-1, msgLen=-1, output=None):
@@ -49,18 +62,19 @@ def read(filename,  sampleRate=-1, msgLen=-1, output=None):
     """
 
     fileSampleRate, wavData = wavfile.read(filename)
-    DURATION = int(len(wavData)/fileSampleRate) #[sec]
+    DURATION = int(len(wavData)/fileSampleRate)  # [sec]
 
     decodedStr = ''
     if (sampleRate and msgLen):
         MAX_LEN = int(DURATION * (sampleRate+1))
-        MIN_SR = int(msgLen/DURATION) #maximum sample rate in Hz
+        MIN_SR = int(msgLen/DURATION)+1  # minimum sample rate in Hz
         PERIOD = int(fileSampleRate/sampleRate)
-        if(MIN_SR is 0): MIN_SR=1
+        if(MIN_SR is 0):
+            MIN_SR = 1
         if (msgLen > MAX_LEN or sampleRate < MIN_SR):
             print("ERROR: Either the specified length of the message is too long, or the specified sample rate is too low for this operation.")
             return
-        
+
         for i in range(msgLen):
             char = wavData[(i+1)*PERIOD]
             try:
@@ -84,8 +98,9 @@ def read(filename,  sampleRate=-1, msgLen=-1, output=None):
                 break
 
     elif (msgLen and not sampleRate):
-        MIN_SR = int(msgLen/DURATION) #maximum sample rate in Hz
-        if(MIN_SR is 0): MIN_SR=1
+        MIN_SR = int(msgLen/DURATION)+1  # maximum sample rate in Hz
+        if(MIN_SR is 0):
+            MIN_SR = 1
         PERIOD = int(fileSampleRate/MIN_SR)
         print(
             f"Reading the first {msgLen} samples using a sample rate of {MIN_SR}Hz")
@@ -122,7 +137,7 @@ Decoded message:
 
 def writeToFile(output, decodedStr):
     print("Writing output to a file...")
-    with open(output, mode="w",encoding="utf8") as outFile:
+    with open(output, mode="w", encoding="utf8") as outFile:
         outFile.write(decodedStr)
         outFile.close()
     print("\nDone")
