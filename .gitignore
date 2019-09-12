@@ -1,6 +1,7 @@
 decoded_message.txt
 __pycache__/
 build/
+bin/
 dist/
 Include/
 Lib/
